@@ -5,6 +5,10 @@ import qs from "qs";
 import Post from "./Post/Post";
 import EnterForm from "./EnterForm/EnterForm";
 
+// Sails socket.io
+import socketIOClient from "socket.io-client";
+import sailsIOClient from "sails.io.js";
+
 class Posts extends Component
 {
 	constructor(props)
@@ -14,7 +18,8 @@ class Posts extends Component
 		this.state = {
 			posts: [],
 			title: "",
-			body: ""
+			body: "",
+			csrfToken: "",
 		};
 	}
 
@@ -22,6 +27,7 @@ class Posts extends Component
 	componentDidMount()
 	{
 		this.indexCall();
+		this.csrfTokenCall();
 	}
 
 	// API Calls
@@ -29,29 +35,39 @@ class Posts extends Component
 	{
 		axios({
 			method: "get",
-			url: "http://localhost:1337/api/v1/post"
-		}).then(res => res.data.posts).then(posts => this.setState({ posts: posts }));
+			url: "http://localhost:1337/post",
+		}).then(res => res.data).then(posts => this.setState({ posts: posts }));
 	}
 
 	storeCall(data)
 	{
+		this.csrfTokenCall();
 		data = qs.stringify(data);
 		axios({
 			method: "post",
-			url: "http://localhost:1337/api/v1/post",
+			url: "http://localhost:1337/post",
 			data: data,
 			headers: {
 				"content-type": "application/x-www-form-urlencoded",
+				"X-CSRF-Token": this.state.csrfToken,
 			}
-		}).then(res => console.log(res));
+		}).then(res => console.log(res)).catch(err => console.log(`Name: ${err.name} \n Messsage: ${err.message}`));
 	}
 
 	destroyCall(id)
 	{
 		axios({
 			method: "delete",
-			url: `http://localhost:1337/api/v1/post/${id}`,
+			url: `http://localhost:1337/post/${id}`,
 		}).then(res => console.log(res)).then(this.indexCall());
+	}
+
+	csrfTokenCall()
+	{
+		axios({
+			method: "get",
+			url: "http://localhost:1337/csrfToken",
+		}).then(res => res.data._csrf).then(csrfToken => this.setState({ csrfToken: csrfToken }));
 	}
 
 	// Event Handlers
