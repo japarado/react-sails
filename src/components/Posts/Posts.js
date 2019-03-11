@@ -21,45 +21,58 @@ class Posts extends Component
 			body: "",
 			csrfToken: "",
 		};
+
+		this.io = {};
+		this.initializeSockets();
+	}
+
+	// Socket.io initializer
+	initializeSockets()
+	{
+		this.io = sailsIOClient(socketIOClient);
+		this.io.sails.url = "http://localhost:1337";
 	}
 
 	// Lifecycle Methods
 	componentDidMount()
 	{
 		this.indexCall();
-		this.csrfTokenCall();
+	}
+
+	componentWillUnmount()
+	{
+		this.io.socket.disconnect();
 	}
 
 	// API Calls
 	indexCall()
 	{
-		axios({
-			method: "get",
-			url: "http://localhost:1337/post",
-		}).then(res => res.data).then(posts => this.setState({ posts: posts }));
+
+		this.io.socket.get("/post", (body, JWR) => 
+		{
+			this.setState({ posts: body });
+		});
 	}
 
 	storeCall(data)
 	{
-		this.csrfTokenCall();
-		data = qs.stringify(data);
-		axios({
-			method: "post",
-			url: "http://localhost:1337/post",
-			data: data,
-			headers: {
-				"content-type": "application/x-www-form-urlencoded",
-				"X-CSRF-Token": this.state.csrfToken,
-			}
-		}).then(res => console.log(res)).catch(err => console.log(`Name: ${err.name} \n Messsage: ${err.message}`));
+		const newPostData = { 
+			title: this.state.title,
+			body: this.state.body,
+		};
+
+		this.io.socket.post("/post", newPostData, (body, JWR) =>
+		{
+			console.log(body);
+		});
 	}
 
 	destroyCall(id)
 	{
-		axios({
-			method: "delete",
-			url: `http://localhost:1337/post/${id}`,
-		}).then(res => console.log(res)).then(this.indexCall());
+		this.io.socket.delete(`/post/${id}`, {}, (body, JWR) => 
+		{
+			console.log(JWR);
+		});
 	}
 
 	csrfTokenCall()
