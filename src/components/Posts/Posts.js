@@ -5,7 +5,9 @@ import qs from "qs";
 import Post from "./Post/Post";
 import EnterForm from "./EnterForm/EnterForm";
 
-// Sails socket.io
+/*let socketIOClient = require("socket.io-client");
+let sailsIOClient = require("sails.io.js");*/
+
 import socketIOClient from "socket.io-client";
 import sailsIOClient from "sails.io.js";
 
@@ -22,8 +24,10 @@ class Posts extends Component
 			csrfToken: "",
 		};
 
-		this.io = {};
+		this.io = null;
+
 		this.initializeSockets();
+		this.watchSocket();
 	}
 
 	// Socket.io initializer
@@ -33,54 +37,67 @@ class Posts extends Component
 		this.io.sails.url = "http://localhost:1337";
 	}
 
+	watchSocket()
+	{
+
+		this.io.socket.on("create", msg =>
+		{
+			this.indexCall();
+		});
+	}
+
 	// Lifecycle Methods
 	componentDidMount()
 	{
 		this.indexCall();
 	}
 
-	componentWillUnmount()
-	{
-		this.io.socket.disconnect();
-	}
-
 	// API Calls
 	indexCall()
 	{
-
-		this.io.socket.get("/post", (body, JWR) => 
+		const that = this;
+		this.io.socket.get("/post", (body, response) =>
 		{
-			this.setState({ posts: body });
+			this.setState({ posts:body });
 		});
 	}
 
-	storeCall(data)
+	createCall()
 	{
 		const newPostData = { 
 			title: this.state.title,
 			body: this.state.body,
 		};
-
-		this.io.socket.post("/post", newPostData, (body, JWR) =>
+		
+		this.io.socket.post("/post", newPostData, (res, jwr) => 
 		{
-			console.log(body);
+			console.log(res);
 		});
+
+		/*axios({
+			method: "post",
+			url: "http://localhost:1337/post",
+			data: newPostData,
+			headers: {
+				"content-type": "application/x-ww-form-urlencoded",
+			},
+		});*/
 	}
 
 	destroyCall(id)
 	{
-		this.io.socket.delete(`/post/${id}`, {}, (body, JWR) => 
-		{
-			console.log(JWR);
-		});
+		/*axios({
+			method: "delete",
+			url: `http://localhost:1337/post/${id}`
+		});*/
 	}
 
 	csrfTokenCall()
 	{
-		axios({
+		/*axios({
 			method: "get",
 			url: "http://localhost:1337/csrfToken",
-		}).then(res => res.data._csrf).then(csrfToken => this.setState({ csrfToken: csrfToken }));
+		}).then(res => res.data._csrf).then(csrfToken => this.setState({ csrfToken: csrfToken }));*/
 	}
 
 	// Event Handlers
@@ -102,8 +119,7 @@ class Posts extends Component
 			title: this.state.title,
 			body: this.state.body,
 		};
-		this.storeCall(data);
-		this.indexCall();
+		this.createCall();
 	}
 
 	handleDelete = (id) => e =>

@@ -35,7 +35,7 @@ module.exports = {
             "always"
         ],
 	"brace-style": [
-		"error",
+		"warn",
 		"allman"
 			
 	],
