@@ -40,9 +40,15 @@ class Posts extends Component
 	watchSocket()
 	{
 
-		this.io.socket.on("create", msg =>
+		this.io.socket.on("post", action =>
 		{
-			this.indexCall();
+			switch(action.msg)
+			{
+				case "CREATE":
+				case "DESTROY":
+				case "UPDATE":
+					this.indexCall();
+			}
 		});
 	}
 
@@ -56,9 +62,9 @@ class Posts extends Component
 	indexCall()
 	{
 		const that = this;
-		this.io.socket.get("/post", (body, response) =>
+		this.io.socket.get("/post", (data, jwr) =>
 		{
-			this.setState({ posts:body });
+			this.setState({ posts: data });
 		});
 	}
 
@@ -69,9 +75,9 @@ class Posts extends Component
 			body: this.state.body,
 		};
 		
-		this.io.socket.post("/post", newPostData, (res, jwr) => 
+		this.io.socket.post("/post", newPostData, (data, jwr) => 
 		{
-			console.log(res);
+			console.log(data);
 		});
 
 		/*axios({
@@ -86,6 +92,11 @@ class Posts extends Component
 
 	destroyCall(id)
 	{
+		this.io.socket.delete(`/post/${id}`, {}, (data, jwr) =>
+		{
+			let reducedPosts = this.state.posts.filter(post => post.id != id);
+			this.setState({ posts: reducedPosts });
+		});
 		/*axios({
 			method: "delete",
 			url: `http://localhost:1337/post/${id}`
