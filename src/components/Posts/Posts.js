@@ -26,8 +26,13 @@ class Posts extends Component
 
 		this.io = null;
 
+	}
+
+	componentDidMount()
+	{
 		this.initializeSockets();
-		this.watchSocket();
+		this.watchSockets();
+		this.indexCall();
 	}
 
 	// Socket.io initializer
@@ -37,78 +42,63 @@ class Posts extends Component
 		this.io.sails.url = "http://localhost:1337";
 	}
 
-	watchSocket()
+	watchSockets()
 	{
-
-		this.io.socket.on("post", action =>
+		this.io.socket.on("post", msg => 
 		{
-			switch(action.msg)
+			switch(msg.verb)
 			{
-				case "CREATE":
-				case "DESTROY":
-				case "UPDATE":
-					this.indexCall();
+			case "created":
+					this.setState({ posts: [...this.state.posts, msg.data] });
+				break;
 			}
 		});
+
 	}
 
-	// Lifecycle Methods
-	componentDidMount()
-	{
-		this.indexCall();
-	}
-
-	// API Calls
 	indexCall()
 	{
-		const that = this;
-		this.io.socket.get("/post", (data, jwr) =>
+		this.io.socket.get("/post", {}, (resData, jwr) => 
 		{
-			this.setState({ posts: data });
+			if(resData.error)
+			{
+				console.error("Could not retrieve posts: " + resData.error);
+				return;
+			}
+			else
+			{
+				const sortedPosts = resData.sort((a, b) => {
+					return b.createdAt  - a.createdAt;
+				})
+				this.setState({ posts: sortedPosts })
+			}
 		});
 	}
 
 	createCall()
 	{
-		const newPostData = { 
+		const newPostData = {
 			title: this.state.title,
 			body: this.state.body,
 		};
-		
-		this.io.socket.post("/post", newPostData, (data, jwr) => 
-		{
-			console.log(data);
-		});
 
-		/*axios({
-			method: "post",
-			url: "http://localhost:1337/post",
-			data: newPostData,
-			headers: {
-				"content-type": "application/x-ww-form-urlencoded",
-			},
-		});*/
+		this.io.socket.post("/post", newPostData, (resData, jwr) =>
+		{
+			if(jwr.error)
+			{
+				console.log("Error thrown while saving the Post: " + jwr);
+			}
+			else
+			{
+				const increasedPosts = [...this.state.posts, resData];
+				this.setState({ posts: [...this.state.posts, resData] })
+			}
+		});
 	}
 
 	destroyCall(id)
 	{
-		this.io.socket.delete(`/post/${id}`, {}, (data, jwr) =>
-		{
-			let reducedPosts = this.state.posts.filter(post => post.id != id);
-			this.setState({ posts: reducedPosts });
-		});
-		/*axios({
-			method: "delete",
-			url: `http://localhost:1337/post/${id}`
-		});*/
-	}
 
-	csrfTokenCall()
-	{
-		/*axios({
-			method: "get",
-			url: "http://localhost:1337/csrfToken",
-		}).then(res => res.data._csrf).then(csrfToken => this.setState({ csrfToken: csrfToken }));*/
 	}
 
 	// Event Handlers
@@ -126,10 +116,6 @@ class Posts extends Component
 
 	handleSubmit = () => e =>
 	{
-		const data = {
-			title: this.state.title,
-			body: this.state.body,
-		};
 		this.createCall();
 	}
 
@@ -137,17 +123,21 @@ class Posts extends Component
 	{
 		this.destroyCall(id);
 	}
-	
+
+	// Helper functions
+	_sortPosts(posts)
+	{
+		const sorted = posts.sort((a, b) => {
+			return b.createdAt - a.createdAt;
+		});
+
+		return sorted;
+	}
 	
 	render()
 	{
 		return(
 			<Fragment>
-				<EnterForm 
-					handleTitleChange={ this.handleTitleChange }
-					handleBodyChange={ this.handleBodyChange }
-					handleSubmit={ this.handleSubmit }
-				/>
 				<div className="row justify-content-center mt-4">
 					{this.state.posts.map(post => 
 					{
@@ -160,6 +150,11 @@ class Posts extends Component
 						);
 					})}
 				</div>
+				<EnterForm 
+					handleTitleChange={ this.handleTitleChange }
+					handleBodyChange={ this.handleBodyChange }
+					handleSubmit={ this.handleSubmit }
+				/>
 			</Fragment>
 		);
 	}
